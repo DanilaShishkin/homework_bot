@@ -129,7 +129,7 @@ def main():
                 send_message(bot, parse_status(homeworks))
             current_timestamp = response['current_date']
         except CheckHomeworks as error:
-            send_error_message(error, sending, bot)
+            send_error_message(error, status, sending, bot)
         except Exception as error:
             send_error_message(error, status, sending, bot)
         finally:
