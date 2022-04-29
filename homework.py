@@ -15,10 +15,9 @@ PRACTICUM_TOKEN = os.getenv('PRACTICUM_TOKEN')
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
-RETRY_TIME = 6
+RETRY_TIME = 600
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
 HEADERS = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
-CHECK_MESSAGE = False
 
 HOMEWORK_VERDICTS = {
     'approved': 'Работа проверена: ревьюеру всё понравилось. Ура!',
@@ -37,12 +36,10 @@ def send_message(bot, message):
     """Отправка сообщения."""
     try:
         bot.send_message(TELEGRAM_CHAT_ID, text=message)
-        sending = True
         logger.info('Отправка сообщения ' + message)
     except Exception as error:
         logger.critical(f'Сбой при отправке сообщения в Telegram: {error}')
-        sending = False
-    return sending
+    return True
 
 
 def get_api_answer(current_timestamp):
@@ -102,13 +99,11 @@ def check_tokens():
             or TELEGRAM_CHAT_ID is not None)
 
 
-def send_error_message(error, status, sending, bot):
+def send_error_message(message, status, bot):
     """Отправка сообщений об ошибках."""
-    message = f'Сбой в работе программы: {error}'
     logger.error(message, exc_info=True)
-    if message != status and sending is False:
+    if message != status:
         send_message(bot, message)
-        status = message
 
 
 def main():
@@ -120,7 +115,6 @@ def main():
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     current_timestamp = int(time.time())
     status = ''
-    sending = False
     while True:
         try:
             response = get_api_answer(current_timestamp)
@@ -129,9 +123,15 @@ def main():
                 send_message(bot, parse_status(homeworks))
             current_timestamp = response['current_date']
         except CheckHomeworks as error:
-            send_error_message(error, status, sending, bot)
+            message = f'Сбой в работе программы: {error}'
+            send_error_message(message, status, bot)
+            if send_message:
+                status = message
         except Exception as error:
-            send_error_message(error, status, sending, bot)
+            message = f'Сбой в работе программы: {error}'
+            send_error_message(message, status, bot)
+            if send_message:
+                status = message
         finally:
             time.sleep(RETRY_TIME)
 
