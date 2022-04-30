@@ -37,9 +37,11 @@ def send_message(bot, message):
     try:
         bot.send_message(TELEGRAM_CHAT_ID, text=message)
         logger.info('Отправка сообщения ' + message)
+        check = True
     except Exception as error:
         logger.critical(f'Сбой при отправке сообщения в Telegram: {error}')
-    return True
+        check = False
+    return check
 
 
 def get_api_answer(current_timestamp):
@@ -99,13 +101,6 @@ def check_tokens():
             or TELEGRAM_CHAT_ID is not None)
 
 
-def send_error_message(message, status, bot):
-    """Отправка сообщений об ошибках."""
-    logger.error(message, exc_info=True)
-    if message != status:
-        send_message(bot, message)
-
-
 def main():
     """Основная логика работы бота."""
     if check_tokens() is False:
@@ -124,13 +119,13 @@ def main():
             current_timestamp = response['current_date']
         except CheckHomeworks as error:
             message = f'Сбой в работе программы: {error}'
-            send_error_message(message, status, bot)
-            if send_message:
+            logger.error(message, exc_info=True)
+            if message != status and send_message(bot, message):
                 status = message
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
-            send_error_message(message, status, bot)
-            if send_message:
+            logger.error(message, exc_info=True)
+            if message != status and send_message(bot, message):
                 status = message
         finally:
             time.sleep(RETRY_TIME)
